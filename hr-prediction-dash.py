@@ -20,7 +20,9 @@ if uploaded_file:
     # Merge salary and position if available
     if salary_file:
         salary_df = pd.read_csv(salary_file)
-        df = df.merge(salary_df[['Batter', 'Salary', 'Position']], on='Batter', how='left')
+       df = df.merge(salary_df[['Batter', 'Salary', 'Position']], on='Batter', how='left')
+      df['Salary'] = pd.to_numeric(df['Salary'], errors='coerce').fillna(0)
+
     else:
         df['Salary'] = 0
         df['Position'] = ''
