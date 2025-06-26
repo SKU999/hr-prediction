@@ -22,8 +22,14 @@ if uploaded_file:
         salary_df = pd.read_csv(salary_file)
         required_cols = {'Batter', 'Salary', 'Position'}
         if required_cols.issubset(salary_df.columns):
+            # Strip spaces, remove commas from salary, convert to numeric
+            df['Batter'] = df['Batter'].str.strip()
+            salary_df['Batter'] = salary_df['Batter'].str.strip()
+            salary_df['Salary'] = salary_df['Salary'].astype(str).str.replace(',', '')
+            salary_df['Salary'] = pd.to_numeric(salary_df['Salary'], errors='coerce').fillna(0)
+
+            # Merge in
             df = df.merge(salary_df[['Batter', 'Salary', 'Position']], on='Batter', how='left')
-            df['Salary'] = pd.to_numeric(df['Salary'], errors='coerce').fillna(0)
         else:
             st.error("The salary file must contain columns: Batter, Salary, Position")
             st.stop()
@@ -37,6 +43,10 @@ if uploaded_file:
     df['HR_Predict_Score'] = (0.7 * df['vs_norm'] + 0.3 * df['HR_norm']) * 100
     df['HR_Predict_Score'] = df['HR_Predict_Score'].round().astype(int)
 
+    # HR per Dollar column
+    df['HR_per_$'] = df['HR_Predict_Score'] / df['Salary']
+    df['HR_per_$'] = df['HR_per_$'].replace([float('inf'), -float('inf')], 0).fillna(0)
+
     # Team filter
     teams = sorted(df['Tm'].dropna().unique())
     selected_teams = st.multiselect("Filter by Team", options=teams, default=teams)
@@ -45,7 +55,7 @@ if uploaded_file:
     # Show table
     st.subheader("Player HR Prediction Scores")
     st.dataframe(
-        filtered_df[['Batter', 'Tm', 'vs', 'HR', 'HR_Predict_Score', 'Salary', 'Position']]
+        filtered_df[['Batter', 'Tm', 'vs', 'HR', 'HR_Predict_Score', 'Salary', 'HR_per_$', 'Position']]
         .sort_values(by='HR_Predict_Score', ascending=False),
         use_container_width=True
     )
@@ -69,7 +79,7 @@ if uploaded_file:
 
     if not best_lineup.empty:
         st.success(f"Best Lineup Total Score: {best_score} (Salary: {best_lineup['Salary'].sum()})")
-        st.dataframe(best_lineup[['Batter', 'Tm', 'Position', 'HR_Predict_Score', 'Salary']], use_container_width=True)
+        st.dataframe(best_lineup[['Batter', 'Tm', 'Position', 'HR_Predict_Score', 'Salary', 'HR_per_$']], use_container_width=True)
     else:
         st.warning("No valid lineup found under salary cap.")
 
